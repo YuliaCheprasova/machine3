@@ -9,7 +9,7 @@ import statistics
 def Y(x1, x2, outliers_percent=10):
     y=np.zeros(len(x1))
     for i in range(len(x1)):
-        y[i]=math.sin(x1[i]) + math.cos(x2[i])
+        y[i]=math.sin(x1[i]) + x2[i]/10
         percent = randint(0, 5)
         noise = np.random.normal(0, 0.5, 1)[0]
         noise = np.clip(noise, (-y[i]*percent)/100, (y[i] * percent)/100)
@@ -94,17 +94,12 @@ if __name__ == '__main__':
     else:
         num_param = 5
     m = 2
-    f = 0.05
+    f = 0.1
     r = int(math.ceil(f * s))
     print(r)
     len_test = int(s * 0.2)
     x_start1 = np.linspace(0, 100, s)
     x_start2 = np.linspace(0, 100, s)
-    #x_start1 = np.zeros(s + len_test)
-    #x_start2 = np.zeros(s + len_test)
-    #for i in range(s + len_test):
-        #x_start1[i] = randint(1, 1000)
-        #x_start2[i] = randint(1, 1000)
     y_start = Y(x_start1, x_start2)
     x1 = x_start1[:s]
     x2 = x_start2[:s]
@@ -116,40 +111,36 @@ if __name__ == '__main__':
     ypredict_test = np.zeros(len_test)
     E = np.zeros(s)
     ME = np.zeros(s)
-    step=r
-    full_times=s//step
-    cur_times=0
-    for i in range(0, s, step):
+    for i in range(0, s):
         h1, h2 = H(i, r, x1, x2)
         w = count_w(x1, x2, i, h1, h2)
         params = optimize.minimize(weighted_least_squares, x0=np.ones(num_param), args=(x1, x2, y, w, kind_of_func)).x
-        cur_times+=1
-        if cur_times>full_times:
-            Ypredict(i, s, kind_of_func, ypredict, params, x1, x2, E, y)
+        if kind_of_func:
+            ypredict[i] = params[0] + params[1] * x1[i] + params[2] * x2[i]
         else:
-            Ypredict(i, i+step, kind_of_func, ypredict, params, x1, x2, E, y)
+            ypredict[i] = params[0] + params[1] * x1[i] + params[2] * x2[i] + params[3] * x1[i] ** 2 + params[4] * x2[i] ** 2
+        E[i] = y[i] - ypredict[i]
     for iter in range(m):
-        cur_times = 0
         med = statistics.median(E)
         for i in range(s):
             ME[i] = abs(E[i]-med)
         mead = statistics.median(ME)
-        for i in range(0, s, step):
+        for i in range(s):
             w = count_w_robast(E, mead)
             params = optimize.minimize(weighted_least_squares, x0=np.ones(num_param), args=(x1, x2, y, w, kind_of_func)).x
-            cur_times += 1
-            if cur_times > full_times:
-                Ypredict(i, s, kind_of_func, ypredict, params, x1, x2, E, y)
+            if kind_of_func:
+                ypredict[i] = params[0] + params[1] * x1[i] + params[2] * x2[i]
             else:
-                Ypredict(i, i + step, kind_of_func, ypredict, params, x1, x2, E, y)
+                ypredict[i] = params[0] + params[1] * x1[i] + params[2] * x2[i] + params[3] * x1[i] ** 2 + params[4] * x2[i] ** 2
+            E[i] = y[i] - ypredict[i]
 
     points = np.arange(s)
     plt.plot(points, y, label='Истинные значения')
     plt.plot(points, ypredict, label='Сглаженные значения')
     plt.legend()
     plt.show()
-    MSE = sum(E) / s
-    print(f'MSE = {MSE}')
+    #MSE = sum(E) / s
+    #print(f'MSE = {MSE}')
 
 
 
